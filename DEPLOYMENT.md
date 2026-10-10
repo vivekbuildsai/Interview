@@ -133,10 +133,14 @@ certificate automatically, usually within minutes). Neither platform
 needs this repo's code changed for a custom domain -- it's entirely a
 dashboard + DNS-provider configuration step, not a build-config one.
 
-**This repository does not make any DNS changes, and no deployment has
-been performed as part of preparing this guide** -- pushing to a Git
-host, connecting a hosting platform, and pointing DNS all require your
-own accounts and explicit go-ahead.
+**This repository does not make any DNS changes.** As of this launch
+pass, the repo has been pushed to `github.com/vivekbuildsai/Interview`
+(`main`, authorized explicitly for that step) -- but no hosting
+platform has been connected and no deployment exists yet. Connecting
+Vercel/Netlify and pointing a custom domain both require your own
+account and, for the Vercel/Netlify connection step specifically, your
+own interactive login (see the main launch report for exactly what's
+needed).
 
 ## After deploying: what to double check once, live
 
