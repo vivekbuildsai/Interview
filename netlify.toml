@@ -1,0 +1,16 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Belt-and-suspenders with public/_redirects (Netlify reads both; having
+# the rule here too means it survives even if someone's dashboard
+# settings ever override the publish directory contents).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

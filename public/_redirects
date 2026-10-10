@@ -1,0 +1,7 @@
+# SPA fallback for Netlify and Cloudflare Pages (both read this file,
+# same syntax). React Router (createBrowserRouter) serves real paths
+# like /library and /arena/python/beginner -- without this rule, a
+# direct visit or a page refresh on any route but "/" 404s, because the
+# host has no file at that path and no app code has run yet to redirect
+# it client-side.
+/*   /index.html   200
