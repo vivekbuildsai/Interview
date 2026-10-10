@@ -83,4 +83,55 @@ describe("useArenaStore", () => {
     expect(useArenaStore.getState().progress.xp).toBe(0)
     expect(useArenaStore.getState().activeSession).toBeNull()
   })
+
+  describe("persistence resilience", () => {
+    it("recovers instead of crashing when localStorage holds malformed JSON", async () => {
+      window.localStorage.setItem("interview-arena-state", "{not valid json!!")
+
+      await expect(useArenaStore.persist.rehydrate()).resolves.not.toThrow()
+
+      // The bad value must not be left behind to keep failing on every future load.
+      expect(window.localStorage.getItem("interview-arena-state")).toBeNull()
+      expect(useArenaStore.getState().progress.xp).toBe(0)
+    })
+
+    it("recovers when the persisted value is valid JSON but not a plausible state object", async () => {
+      window.localStorage.setItem("interview-arena-state", JSON.stringify("just a string, not our shape"))
+
+      await expect(useArenaStore.persist.rehydrate()).resolves.not.toThrow()
+      expect(useArenaStore.getState().progress).toMatchObject({ xp: 0, sessions: [] })
+    })
+
+    it("deep-merges persisted progress so a real session survives rehydration", async () => {
+      const questions = freshQuestions(1)
+      useArenaStore.getState().startSession("python", "beginner", questions)
+      useArenaStore.getState().recordAttempt({ questionId: questions[0].id, difficulty: "beginner", topic: questions[0].topic, correct: true, skipped: false, hintsUsed: 0, timeMs: 1000 })
+      useArenaStore.getState().finishSession({})
+      const xpBefore = useArenaStore.getState().progress.xp
+      expect(xpBefore).toBeGreaterThan(0)
+
+      await useArenaStore.persist.rehydrate()
+
+      expect(useArenaStore.getState().progress.xp).toBe(xpBefore)
+      expect(useArenaStore.getState().progress.sessions).toHaveLength(1)
+    })
+
+    it("fills in a field missing from an old persisted blob with the current default instead of leaving it undefined", async () => {
+      // Simulates a future release adding a new field to UserProgressState --
+      // an old persisted blob simply won't have it yet.
+      window.localStorage.setItem(
+        "interview-arena-state",
+        JSON.stringify({
+          state: { progress: { xp: 42, sessions: [] /* streakDays, bestStreak, etc. intentionally omitted */ } },
+          version: 1,
+        }),
+      )
+
+      await useArenaStore.persist.rehydrate()
+
+      expect(useArenaStore.getState().progress.xp).toBe(42)
+      expect(useArenaStore.getState().progress.streakDays).toBe(0)
+      expect(useArenaStore.getState().progress.topicStats).toEqual({})
+    })
+  })
 })

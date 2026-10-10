@@ -78,7 +78,17 @@ function updateStreak(progress: UserProgressState): Pick<UserProgressState, "str
 const zustandStorage: PersistStorage<ArenaState> = {
   getItem: (name) => {
     const raw = persistentStore.getItem(name)
-    return raw ? JSON.parse(raw) : null
+    if (!raw) return null
+    try {
+      return JSON.parse(raw)
+    } catch {
+      // Corrupted/malformed JSON (manual edits, a partial write, a future
+      // incompatible format) must never crash the app on load -- treat it
+      // as "nothing saved" and drop the bad value so it doesn't keep
+      // failing to parse on every future load.
+      persistentStore.removeItem(name)
+      return null
+    }
   },
   setItem: (name, value) => persistentStore.setItem(name, JSON.stringify(value)),
   removeItem: (name) => persistentStore.removeItem(name),
@@ -186,6 +196,28 @@ export const useArenaStore = create<ArenaState>()(
       name: "interview-arena-state",
       storage: zustandStorage,
       version: 1,
+      // A plain top-level merge (zustand's default) would replace
+      // `progress` wholesale with whatever was persisted -- so a future
+      // release that adds a new field to defaultProgress would have that
+      // field silently missing for every existing user until a fresh
+      // reset. Deep-merging `progress` specifically keeps new fields
+      // defaulted while preserving everything the user already earned.
+      // A persisted blob that isn't a plausible object at all (corrupted
+      // write, unrelated data under the same key) is ignored outright --
+      // never spread into state, which previously could crash child
+      // components expecting known fields to exist.
+      merge: (persistedState, currentState) => {
+        if (typeof persistedState !== "object" || persistedState === null) {
+          return currentState
+        }
+        const persisted = persistedState as Partial<ArenaState>
+        const persistedProgress = typeof persisted.progress === "object" && persisted.progress !== null ? persisted.progress : {}
+        return {
+          ...currentState,
+          ...persisted,
+          progress: { ...currentState.progress, ...persistedProgress },
+        }
+      },
     },
   ),
 )
