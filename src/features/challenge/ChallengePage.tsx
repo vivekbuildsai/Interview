@@ -52,12 +52,20 @@ export default function ChallengePage() {
 
   useEffect(() => {
     if (!game || !difficulty) return
-    if (matchesActive) return
+    // Reads the live store instead of trusting the `matchesActive` this
+    // closure captured: React 18 StrictMode intentionally double-invokes
+    // effects in development (mount -> cleanup -> mount again) with the
+    // same closure, and this effect has no cleanup to prevent a second
+    // call -- without this live check, dev mode would call
+    // startSession() twice with two different shuffles, silently
+    // discarding whichever the user saw first.
+    const current = useArenaStore.getState().activeSession
+    if (current?.gameId === game.id && current?.difficulty === difficulty) return
     const pool = shuffled(questionsForDifficulty(game.id, difficulty))
     if (pool.length === 0) return
     startSession(game.id, difficulty, pool)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game?.id, difficulty, matchesActive])
+  }, [game?.id, difficulty])
 
   useEffect(() => {
     questionStartedAt.current = Date.now()
