@@ -1,61 +1,27 @@
 // Real, in-browser Python execution for coding/debugging exercises --
-// via Pyodide (CPython compiled to WebAssembly), loaded lazily from a
-// pinned CDN build only the first time a coding exercise is opened.
-// Nothing is ever sent to a server: the user's code runs entirely inside
-// their own browser tab, sandboxed by the WASM runtime itself. This is
-// genuine execution, never simulated -- if it fails to load, callers get
-// an honest error, never a faked "passed" result.
+// via Pyodide (CPython compiled to WebAssembly), run inside a dedicated
+// Web Worker (src/workers/pyodideWorker.ts) and loaded lazily from a
+// pinned CDN build only the first time a coding exercise is run.
+//
+// Why a worker, not the main thread: a user's code can contain an
+// infinite loop (accidentally or not), and a synchronous WASM call on
+// the main thread cannot be interrupted from the outside -- it would
+// freeze the entire tab with no way to recover short of closing it. A
+// worker can be forcibly terminated from here on a timeout, which is
+// the only reliable way to recover. It also means untrusted code never
+// runs in the same JS global scope as the app -- no DOM, no
+// localStorage, no access to this app's own state, regardless of what
+// Pyodide's `js` interop module could otherwise reach into.
+//
+// Nothing is ever sent to a server: all of this runs entirely inside
+// the user's own browser. This is genuine execution, never simulated --
+// every failure path (CDN unreachable, execution timed out, the worker
+// crashed) surfaces an honest error, never a faked "passed" result.
 
 import type { CodeTestCase } from "./types"
+import type { RunRequest, RunResponse } from "../workers/pyodideWorker"
 
-const PYODIDE_VERSION = "0.26.4"
-const CDN_BASE = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`
-
-declare global {
-  interface Window {
-    loadPyodide?: (config: { indexURL: string }) => Promise<PyodideInterface>
-  }
-}
-
-interface PyodideInterface {
-  runPythonAsync: (code: string) => Promise<unknown>
-  setStdout: (opts: { batched: (msg: string) => void }) => void
-  setStderr: (opts: { batched: (msg: string) => void }) => void
-}
-
-let pyodidePromise: Promise<PyodideInterface> | null = null
-let scriptPromise: Promise<void> | null = null
-
-function loadScript(): Promise<void> {
-  if (scriptPromise) return scriptPromise
-  scriptPromise = new Promise((resolve, reject) => {
-    if (window.loadPyodide) {
-      resolve()
-      return
-    }
-    const script = document.createElement("script")
-    script.src = `${CDN_BASE}pyodide.js`
-    script.async = true
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error("Could not load the Python runtime from the CDN. Check your network connection and try again."))
-    document.head.appendChild(script)
-  })
-  return scriptPromise
-}
-
-export async function getPyodide(): Promise<PyodideInterface> {
-  if (pyodidePromise) return pyodidePromise
-  pyodidePromise = (async () => {
-    await loadScript()
-    if (!window.loadPyodide) throw new Error("Python runtime failed to initialize.")
-    return window.loadPyodide({ indexURL: CDN_BASE })
-  })()
-  return pyodidePromise
-}
-
-export function isPyodideReady(): boolean {
-  return pyodidePromise !== null
-}
+const EXECUTION_TIMEOUT_MS = 10_000
 
 export interface TestOutcome {
   description: string
@@ -72,63 +38,92 @@ export interface RunResult {
   runtimeError: string | null
 }
 
-function pyRepr(value: unknown): string {
-  // JSON is a safe, deterministic bridge for the plain data these test
-  // cases ever carry (numbers, strings, bools, lists, dicts, null).
-  return JSON.stringify(value ?? null)
-    .replace(/\btrue\b/g, "True")
-    .replace(/\bfalse\b/g, "False")
-    .replace(/\bnull\b/g, "None")
+interface PendingRequest {
+  resolve: (result: RunResult) => void
+  timeoutHandle: ReturnType<typeof setTimeout>
+}
+
+let worker: Worker | null = null
+let nextId = 1
+const pending = new Map<number, PendingRequest>()
+
+function outcomesFor(testCases: CodeTestCase[], message: string): TestOutcome[] {
+  return testCases.map((tc) => ({ description: tc.description, passed: false, expected: tc.expected, actual: null, error: message }))
+}
+
+function settleAllPending(message: string) {
+  for (const [id, req] of pending) {
+    clearTimeout(req.timeoutHandle)
+    // We no longer know which question's test cases were in flight once
+    // the worker itself has failed, so each caller's own promise is
+    // resolved with an empty-but-honest outcome list; runtimeError is
+    // what callers actually surface to the user.
+    req.resolve({ outcomes: [], allPassed: false, stdout: "", runtimeError: message })
+    pending.delete(id)
+  }
+}
+
+function destroyWorker(reason: string) {
+  if (worker) {
+    worker.terminate()
+    worker = null
+  }
+  settleAllPending(reason)
+}
+
+function getWorker(): Worker {
+  if (worker) return worker
+
+  const w = new Worker(new URL("../workers/pyodideWorker.ts", import.meta.url))
+  w.onmessage = (event: MessageEvent<RunResponse>) => {
+    const res = event.data
+    const req = pending.get(res.id)
+    if (!req) return
+    clearTimeout(req.timeoutHandle)
+    pending.delete(res.id)
+
+    if (res.fatalError) {
+      req.resolve({ outcomes: [], allPassed: false, stdout: "", runtimeError: res.fatalError })
+      return
+    }
+    const outcomes = res.outcomes ?? []
+    req.resolve({ outcomes, allPassed: outcomes.length > 0 && outcomes.every((o) => o.passed), stdout: res.stdout ?? "", runtimeError: res.runtimeError ?? null })
+  }
+  w.onerror = () => {
+    // An uncaught exception inside the worker (e.g. the Python runtime
+    // itself crashing, or exhausting the worker's memory) -- the worker
+    // is in an unknown state at this point, so it's discarded entirely
+    // rather than reused; the next run gets a fresh one.
+    destroyWorker("The Python runtime crashed unexpectedly. It has been restarted -- please try running your code again.")
+  }
+
+  worker = w
+  return w
 }
 
 export async function runPythonFunction(userCode: string, functionName: string, testCases: CodeTestCase[]): Promise<RunResult> {
-  const pyodide = await getPyodide()
-
-  let stdoutBuf = ""
-  pyodide.setStdout({ batched: (msg) => (stdoutBuf += msg + "\n") })
-  pyodide.setStderr({ batched: (msg) => (stdoutBuf += msg + "\n") })
-
-  const testsPy = testCases
-    .map((tc, i) => {
-      const argsRepr = tc.args.map((a) => pyRepr(a)).join(", ")
-      return `
-try:
-    __actual_${i} = ${functionName}(${argsRepr})
-    __results.append({"passed": __actual_${i} == ${pyRepr(tc.expected)}, "actual": __actual_${i}, "error": None})
-except Exception as __e:
-    __results.append({"passed": False, "actual": None, "error": f"{type(__e).__name__}: {__e}"})
-`
-    })
-    .join("\n")
-
-  const script = `
-import json as __json
-__results = []
-
-${userCode}
-
-${testsPy}
-__json.dumps(__results)
-`
-
+  let w: Worker
   try {
-    const raw = await pyodide.runPythonAsync(script)
-    const parsed = JSON.parse(raw as string) as Array<{ passed: boolean; actual: unknown; error: string | null }>
-    const outcomes: TestOutcome[] = parsed.map((r, i) => ({
-      description: testCases[i].description,
-      passed: r.passed,
-      expected: testCases[i].expected,
-      actual: r.actual,
-      error: r.error,
-    }))
-    return { outcomes, allPassed: outcomes.every((o) => o.passed), stdout: stdoutBuf.trim(), runtimeError: null }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    return {
-      outcomes: testCases.map((tc) => ({ description: tc.description, passed: false, expected: tc.expected, actual: null, error: message })),
-      allPassed: false,
-      stdout: stdoutBuf.trim(),
-      runtimeError: message,
-    }
+    w = getWorker()
+  } catch {
+    return { outcomes: outcomesFor(testCases, "unavailable"), allPassed: false, stdout: "", runtimeError: "Could not start the Python runtime in this browser." }
   }
+
+  const id = nextId++
+  return new Promise<RunResult>((resolve) => {
+    const timeoutHandle = setTimeout(() => {
+      pending.delete(id)
+      destroyWorker("Your code took too long to run (possibly an infinite loop) and was stopped after 10 seconds.")
+      resolve({
+        outcomes: outcomesFor(testCases, "Execution timed out after 10 seconds -- check for an infinite loop."),
+        allPassed: false,
+        stdout: "",
+        runtimeError: "Execution timed out after 10 seconds -- check for an infinite loop.",
+      })
+    }, EXECUTION_TIMEOUT_MS)
+
+    pending.set(id, { resolve, timeoutHandle })
+    const req: RunRequest = { id, code: userCode, functionName, testCases }
+    w.postMessage(req)
+  })
 }
