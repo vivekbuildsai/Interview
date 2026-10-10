@@ -1,5 +1,6 @@
 import { useEffect } from "react"
 import { AppRouter } from "@/app/routes"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { useArenaStore } from "@/lib/store"
 
 export function App() {
@@ -10,5 +11,9 @@ export function App() {
     document.documentElement.classList.toggle("dark", theme === "dark")
   }, [theme])
 
-  return <AppRouter />
+  return (
+    <ErrorBoundary>
+      <AppRouter />
+    </ErrorBoundary>
+  )
 }
