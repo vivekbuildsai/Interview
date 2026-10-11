@@ -1,7 +1,7 @@
 import { useState } from "react"
-import { Cloud, LogOut, Moon, ShieldAlert, Sun, Trash2, User } from "lucide-react"
+import { Cloud, LogOut, Moon, Sparkles, ShieldAlert, Sun, Trash2, User } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card"
-import { Button } from "@/components/ui/Button"
+import { Button, LinkButton } from "@/components/ui/Button"
 import { Modal } from "@/components/ui/Modal"
 import { useArenaStore } from "@/lib/store"
 import { cn } from "@/lib/cn"
@@ -44,6 +44,20 @@ export default function SettingsPage() {
             <Sun className="size-5 text-accent-violetSoft" />
             <span className="text-sm text-zinc-200">Light</span>
           </button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="size-4 text-accent-violetSoft" /> AI Interview Coach
+          </CardTitle>
+          <CardDescription>Ask follow-up questions about anything you're studying. Requires sign-in and may not be configured on every deployment.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LinkButton variant="outline" size="sm" className="w-fit" to="/coach">
+            Open the coach
+          </LinkButton>
         </CardContent>
       </Card>
 
