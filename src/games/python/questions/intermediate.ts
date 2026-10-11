@@ -154,4 +154,42 @@ export const pythonIntermediate: Question[] = [
     tags: ["loops"],
     estimatedSeconds: 15,
   },
+  {
+    id: "py-int-9",
+    gameId: "python",
+    topic: "Closures",
+    difficulty: "intermediate",
+    type: "multiple-choice",
+    prompt: "What is a Python closure?",
+    options: [
+      { id: "a", label: "A function defined with no parameters" },
+      { id: "b", label: "A nested function that remembers and can access variables from its enclosing scope, even after the outer function has returned" },
+      { id: "c", label: "A class method decorated with @staticmethod" },
+      { id: "d", label: "A block of code inside parentheses that closes a function call" },
+    ],
+    correctOptionId: "b",
+    explanation:
+      "A closure is a nested function that captures variables from its enclosing (non-global) scope and keeps access to them even after the outer function has finished executing. This is how a function factory -- for example, a function that builds and returns a customized multiplier -- can retain state without a class. It has nothing to do with @staticmethod or parentheses.",
+    tags: ["closures", "functions"],
+    estimatedSeconds: 35,
+  },
+  {
+    id: "py-int-10",
+    gameId: "python",
+    topic: "File Handling",
+    difficulty: "intermediate",
+    type: "multiple-choice",
+    prompt: 'Why is `with open("data.txt") as f:` preferred over manually calling `open()` and then `f.close()`?',
+    options: [
+      { id: "a", label: "It's purely stylistic -- both approaches behave identically in every case" },
+      { id: "b", label: "The with statement guarantees f.close() runs automatically, even if an exception is raised inside the block" },
+      { id: "c", label: "with opens the file in binary mode automatically" },
+      { id: "d", label: "with makes the file read happen asynchronously" },
+    ],
+    correctOptionId: "b",
+    explanation:
+      "open() returns a context manager, and the with statement calls its __exit__ method when the block ends -- whether it ends normally or via an exception -- which closes the file. With a manual open()/close() pair, an exception raised between the two calls skips close() entirely and leaks the file handle. It has nothing to do with binary mode or async behavior.",
+    tags: ["file-handling", "context-managers"],
+    estimatedSeconds: 35,
+  },
 ]

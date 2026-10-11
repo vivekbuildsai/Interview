@@ -151,4 +151,42 @@ export const pythonBeginner: Question[] = [
     tags: ["conditionals", "arithmetic"],
     estimatedSeconds: 40,
   },
+  {
+    id: "py-beg-9",
+    gameId: "python",
+    topic: "String Formatting",
+    difficulty: "beginner",
+    type: "multiple-choice",
+    prompt: "Which of these is an f-string that embeds the variable `name` directly inside the string literal?",
+    options: [
+      { id: "a", label: 'f"Hello, {name}!"' },
+      { id: "b", label: '"Hello, {name}!".format' },
+      { id: "c", label: '"Hello, " % name' },
+      { id: "d", label: '"Hello, {0}!"' },
+    ],
+    correctOptionId: "a",
+    explanation:
+      'An f-string is a string literal prefixed with f whose {expression} placeholders are evaluated and inserted in place -- f"Hello, {name}!" embeds the current value of name. Writing "{0}!" or "{name}!" without actually calling .format(...) on it just produces a literal string containing braces; it does not interpolate anything.',
+    tags: ["strings", "formatting"],
+    estimatedSeconds: 20,
+  },
+  {
+    id: "py-beg-10",
+    gameId: "python",
+    topic: "Mutability",
+    difficulty: "beginner",
+    type: "multiple-choice",
+    prompt: "Why does `my_tuple[0] = 5` raise a TypeError, while `my_list[0] = 5` works fine?",
+    options: [
+      { id: "a", label: "Tuples can only hold numbers, never other types" },
+      { id: "b", label: "Tuples are immutable -- their elements can't be reassigned after creation; lists are mutable" },
+      { id: "c", label: "Tuples are read-only copies of lists made at compile time" },
+      { id: "d", label: "There's no real difference -- it's an interpreter bug" },
+    ],
+    correctOptionId: "b",
+    explanation:
+      "Tuples are an immutable sequence type -- once built, you cannot change, add, or remove their elements, so indexed assignment raises TypeError. Lists are mutable, so the same assignment works. This immutability is also why tuples (unlike lists) are hashable and can be used as dictionary keys or set members.",
+    tags: ["mutability", "data-structures"],
+    estimatedSeconds: 20,
+  },
 ]
