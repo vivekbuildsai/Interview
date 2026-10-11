@@ -14,6 +14,7 @@ import { create } from "zustand"
 import type { Session, User } from "@supabase/supabase-js"
 import { isSupabaseConfigured, supabase } from "@/lib/supabase/client"
 import { persistentStore } from "@/lib/storage"
+import { consumeStashedRecoveryFlag } from "./recoveryLinkDetector"
 
 export type AuthStatus = "loading" | "guest" | "authenticated"
 
@@ -79,7 +80,13 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   status: isSupabaseConfigured() ? "loading" : "guest",
   user: null,
   session: null,
-  recoveryPending: false,
+  // Read once, synchronously, from main.tsx's eager pre-check -- NOT from
+  // catching the transient PASSWORD_RECOVERY event below, which can be
+  // missed if this lazy-loaded chunk finishes loading after the Supabase
+  // client (also lazy-loaded) has already processed the URL and fired it
+  // to zero listeners. Confirmed live: without this, a recovery link
+  // silently signed the user in instead of prompting for a new password.
+  recoveryPending: consumeStashedRecoveryFlag(),
 
   hasMadeEntryChoice: () => persistentStore.getItem(ENTRY_CHOICE_KEY) !== null,
   recordGuestChoice: () => persistentStore.setItem(ENTRY_CHOICE_KEY, "guest"),

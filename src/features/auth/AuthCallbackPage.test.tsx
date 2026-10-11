@@ -20,16 +20,18 @@ describe("AuthCallbackPage", () => {
 
     renderWithRouter(<AuthCallbackPage />)
 
-    expect(screen.queryByText(/set a new password/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/something went wrong/i)).not.toBeInTheDocument()
   })
 
-  it("shows the new-password form instead of redirecting when this is a password-recovery link", async () => {
+  it("redirects back to the remembered return path once the session resolves (not /auth/callback itself)", async () => {
+    window.sessionStorage.setItem("interview-arena-auth-return-path", "/settings")
     const { default: AuthCallbackPage } = await import("./AuthCallbackPage")
     const { useAuthStore } = await import("@/lib/auth/authStore")
-    useAuthStore.setState({ status: "authenticated", user: { id: "u1" } as never, recoveryPending: true })
+    useAuthStore.setState({ status: "authenticated", user: { id: "u1" } as never })
 
-    renderWithRouter(<AuthCallbackPage />)
+    renderWithRouter(<AuthCallbackPage />, ["/auth/callback"])
 
-    expect(await screen.findByText(/set a new password/i)).toBeInTheDocument()
+    // The remembered path is consumed (one-shot) once this resolves.
+    expect(window.sessionStorage.getItem("interview-arena-auth-return-path")).toBeNull()
   })
 })

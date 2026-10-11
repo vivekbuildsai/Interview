@@ -8,6 +8,7 @@ import { useEffect } from "react"
 import { useAuthStore } from "@/lib/auth/authStore"
 import { useCloudSync } from "@/lib/cloud/useCloudSync"
 import { WelcomeGate } from "./WelcomeGate"
+import { RecoveryPrompt } from "./RecoveryPrompt"
 
 export default function AuthRoot() {
   const initAuth = useAuthStore((s) => s.initAuth)
@@ -19,5 +20,10 @@ export default function AuthRoot() {
 
   useCloudSync()
 
-  return <WelcomeGate />
+  return (
+    <>
+      <WelcomeGate />
+      <RecoveryPrompt />
+    </>
+  )
 }
