@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/Icon"
 import { cn } from "@/lib/cn"
 import { NAV_ITEMS } from "./nav"
 import { useArenaStore } from "@/lib/store"
-import { overallStats } from "@/lib/derived"
+import { levelFromXp } from "@/lib/scoring"
 
 // Lazy for the same reason as AuthRoot (see src/App.tsx): keeps
 // @supabase/supabase-js out of the main bundle for guests.
@@ -49,7 +49,11 @@ function NavLinks({ onNavigate, orientation = "vertical" }: { onNavigate?: () =>
 
 function StreakAndXp() {
   const progress = useArenaStore((s) => s.progress)
-  const stats = overallStats(progress)
+  // levelFromXp directly, not overallStats -- this header badge only ever
+  // needs the level number, and overallStats pulls in the entire game
+  // registry (every domain's full question bank) just to compute fields
+  // this component never uses, bloating the main bundle for every guest.
+  const stats = levelFromXp(progress.xp)
 
   return (
     <div className="flex items-center gap-2 sm:gap-3">
