@@ -30,6 +30,10 @@ interface ArenaState {
   toggleTheme: () => void
   resetProgress: () => void
   clearLastUnlocks: () => void
+  // Replaces progress wholesale with the result of a cloud merge/pull
+  // (src/lib/cloud). Separate from resetProgress -- this is "adopt this
+  // authoritative state," not "erase everything."
+  setSyncedProgress: (progress: UserProgressState) => void
 }
 
 const defaultProgress: UserProgressState = {
@@ -191,6 +195,8 @@ export const useArenaStore = create<ArenaState>()(
       resetProgress: () => set({ progress: defaultProgress, activeSession: null, lastSessionResult: null, lastUnlockedAchievements: [] }),
 
       clearLastUnlocks: () => set({ lastUnlockedAchievements: [] }),
+
+      setSyncedProgress: (progress) => set({ progress }),
     }),
     {
       name: "interview-arena-state",
