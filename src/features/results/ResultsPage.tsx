@@ -156,7 +156,7 @@ function StatBlock({ icon, value, label }: { icon: ReactNode; value: ReactNode; 
       <CardContent className="flex flex-col items-center gap-1.5 p-4 text-center">
         {icon}
         <p className="text-lg font-bold text-zinc-50">{value}</p>
-        <p className="text-xs text-zinc-500">{label}</p>
+        <p className="text-xs text-zinc-400">{label}</p>
       </CardContent>
     </Card>
   )
