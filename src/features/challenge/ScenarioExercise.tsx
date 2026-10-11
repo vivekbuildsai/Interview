@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Eye, ThumbsDown, ThumbsUp } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Card, CardContent } from "@/components/ui/Card"
@@ -6,7 +6,21 @@ import type { ScenarioQuestion } from "@/lib/types"
 
 export function ScenarioExercise({ question, submitted, onSubmit }: { question: ScenarioQuestion; submitted: boolean; onSubmit: (correct: boolean) => void }) {
   const [notes, setNotes] = useState("")
-  const [revealed, setRevealed] = useState(submitted)
+  const [revealed, setRevealed] = useState(false)
+
+  // Resetting from `question.id` (not deriving the initial state from the
+  // `submitted` prop at mount) is deliberate -- confirmed live: when
+  // advancing from a just-submitted question to a new scenario question,
+  // ChallengePage's own `submitted` state is still `true` during the very
+  // render that mounts this new question (it only resets in a *later*
+  // effect), so a fresh instance reading `submitted` as its initial
+  // `revealed` value showed the model answer immediately, before the
+  // user ever clicked "Reveal". This effect is what actually guarantees a
+  // clean slate on every new question, independent of that timing.
+  useEffect(() => {
+    setNotes("")
+    setRevealed(false)
+  }, [question.id])
 
   return (
     <div className="flex flex-col gap-3">
