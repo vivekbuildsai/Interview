@@ -4,7 +4,8 @@ import { ACHIEVEMENTS } from "./achievements"
 import { newId, todayKey } from "./id"
 import { persistentStore } from "./storage"
 import { accuracyPct, xpForAttempt } from "./scoring"
-import type { AchievementContext, AttemptRecord, Difficulty, Question, SessionResult, UserProgressState } from "./types"
+import { setDayStatus } from "./studyPlan"
+import type { AchievementContext, AttemptRecord, Difficulty, Question, SessionResult, StudyPlan, UserProgressState } from "./types"
 
 export interface ActiveSession {
   id: string
@@ -34,6 +35,8 @@ interface ArenaState {
   // (src/lib/cloud). Separate from resetProgress -- this is "adopt this
   // authoritative state," not "erase everything."
   setSyncedProgress: (progress: UserProgressState) => void
+  setStudyPlan: (plan: StudyPlan | null) => void
+  markStudyPlanDay: (dayIndex: number, status: "completed" | "skipped" | "pending") => void
 }
 
 const defaultProgress: UserProgressState = {
@@ -46,6 +49,7 @@ const defaultProgress: UserProgressState = {
   topicStats: {},
   reviewQueue: [],
   theme: "dark",
+  studyPlan: null,
 }
 
 function buildAchievementContext(progress: UserProgressState): AchievementContext {
@@ -197,6 +201,14 @@ export const useArenaStore = create<ArenaState>()(
       clearLastUnlocks: () => set({ lastUnlockedAchievements: [] }),
 
       setSyncedProgress: (progress) => set({ progress }),
+
+      setStudyPlan: (plan) => set((state) => ({ progress: { ...state.progress, studyPlan: plan } })),
+
+      markStudyPlanDay: (dayIndex, status) =>
+        set((state) => {
+          if (!state.progress.studyPlan) return state
+          return { progress: { ...state.progress, studyPlan: setDayStatus(state.progress.studyPlan, dayIndex, status) } }
+        }),
     }),
     {
       name: "interview-arena-state",

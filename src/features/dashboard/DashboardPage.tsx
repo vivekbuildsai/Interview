@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
-import { ArrowRight, Flame, Sparkles, Target, TrendingUp, Trophy } from "lucide-react"
+import { ArrowRight, CalendarRange, Flame, Sparkles, Target, TrendingUp, Trophy } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/Card"
 import { LinkButton } from "@/components/ui/Button"
 import { Badge } from "@/components/ui/Badge"
@@ -8,11 +8,13 @@ import { ProgressRing } from "@/components/ui/ProgressRing"
 import { Icon } from "@/components/ui/Icon"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { useArenaStore } from "@/lib/store"
-import { overallStats, dailyChallenge, recommendedNext } from "@/lib/derived"
+import { overallStats, dailyChallenge } from "@/lib/derived"
 import { getGame, getPlayableGames } from "@/lib/gameRegistry"
 import { DIFFICULTY_META } from "@/lib/types"
 import { GameCard } from "@/features/library/GameCard"
 import { ACHIEVEMENTS } from "@/lib/achievements"
+import { readinessEstimate, recommendNextChallenge, strongestTopics, weakestTopics, weeklyPracticeProgress } from "@/lib/recommendations"
+import { nextDueDay } from "@/lib/studyPlan"
 
 function greeting() {
   const hour = new Date().getHours()
@@ -27,10 +29,16 @@ export default function DashboardPage() {
   const stats = overallStats(progress)
   const isFirstTime = progress.sessions.length === 0
   const daily = dailyChallenge()
-  const recommendation = recommendedNext(progress)
   const featuredGames = getPlayableGames()
     .filter((g) => g.questions.length > 0)
     .slice(0, 3)
+
+  const readiness = readinessEstimate(progress)
+  const strongest = strongestTopics(progress.sessions, 3)
+  const weakest = weakestTopics(progress.sessions, 3)
+  const nextChallenge = recommendNextChallenge(progress)
+  const weeklyPractice = weeklyPracticeProgress(progress.sessions)
+  const dueStudyDay = progress.studyPlan ? nextDueDay(progress.studyPlan) : null
 
   const activeGame = activeSession ? getGame(activeSession.gameId) : null
   const lastSession = stats.recentSessions[0]
@@ -55,6 +63,46 @@ export default function DashboardPage() {
           <StatCard icon={<Flame className="size-6 fill-orange-400 text-orange-400" />} value={`${progress.streakDays}d`} label="Current streak" />
           <StatCard icon={<Target className="size-6 text-accent-cyan" />} value={`${stats.accuracy}%`} label="Accuracy" />
           <StatCard icon={<TrendingUp className="size-6 text-success" />} value={stats.totalSessions} label="Sessions played" />
+        </div>
+      )}
+
+      {!isFirstTime && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Card>
+            <CardContent className="flex items-center gap-4 p-5">
+              <ProgressRing value={readiness.score} size={60} strokeWidth={5} label={<span className="text-sm font-bold text-zinc-50">{readiness.score}</span>} />
+              <div>
+                <p className="text-sm font-semibold text-zinc-50">{readiness.label}</p>
+                <p className="mt-1 text-xs text-zinc-400">{readiness.basis}</p>
+                <p className="mt-1 text-[11px] text-zinc-600">An estimate from your own practice, not a hiring prediction.</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex flex-col gap-2 p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-zinc-50">This week</span>
+                <CalendarRange className="size-4 text-accent-cyan" />
+              </div>
+              <p className="text-2xl font-bold text-zinc-50">
+                {weeklyPractice.sessionsThisWeek}
+                <span className="text-sm font-normal text-zinc-500">/{weeklyPractice.weeklyGoal} sessions</span>
+              </p>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-base-300">
+                <div
+                  className="h-full rounded-full bg-accent-cyan transition-[width]"
+                  style={{ width: `${Math.min(100, Math.round((weeklyPractice.sessionsThisWeek / weeklyPractice.weeklyGoal) * 100))}%` }}
+                />
+              </div>
+              <p className="text-xs text-zinc-500">
+                {weeklyPractice.daysSinceLastPractice === null
+                  ? "No sessions yet this week."
+                  : weeklyPractice.daysSinceLastPractice === 0
+                    ? "Practiced today."
+                    : `Last practiced ${weeklyPractice.daysSinceLastPractice}d ago.`}
+              </p>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -106,31 +154,89 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {recommendation.type === "review" && (
-        <Card className="border-warning/30 bg-warning/5">
+      {nextChallenge && (
+        <Card className="border-accent-violet/30 bg-accent-violet/5">
           <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-            <div className="flex items-center gap-2 text-sm text-zinc-200">
-              <Target className="size-4 text-warning" />
-              You have {recommendation.count} question{recommendation.count === 1 ? "" : "s"} queued for review.
+            <div className="flex items-start gap-2 text-sm text-zinc-200">
+              <Sparkles className="mt-0.5 size-4 shrink-0 text-accent-violetSoft" />
+              <span>{nextChallenge.reason}</span>
             </div>
-            <LinkButton size="sm" variant="outline" to="/progress">
-              Review now
+            <LinkButton size="sm" variant="outline" to={`/arena/${nextChallenge.gameId}/${nextChallenge.difficulty}`}>
+              {nextChallenge.kind === "review" ? "Review now" : "Start"}
             </LinkButton>
           </CardContent>
         </Card>
       )}
 
-      {/* Weak topics */}
-      {stats.weakTopics.length > 0 && (
-        <div>
-          <SectionHeader title="Topics that need revision" />
-          <div className="flex flex-wrap gap-2">
-            {stats.weakTopics.map((t) => (
-              <Badge key={t.topic} tone="warning">
-                {t.topic} &middot; {t.accuracy}%
-              </Badge>
-            ))}
-          </div>
+      {/* Study plan */}
+      <Card>
+        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+          {progress.studyPlan ? (
+            dueStudyDay ? (
+              <>
+                <div className="flex items-center gap-2 text-sm text-zinc-200">
+                  <CalendarRange className="size-4 text-accent-violetSoft" />
+                  <span>
+                    Today's plan: {dueStudyDay.gameName} &middot; {DIFFICULTY_META[dueStudyDay.difficulty].label}
+                    {dueStudyDay.isRevision ? " (revision)" : ""} &middot; ~{dueStudyDay.estimatedMinutes} min
+                  </span>
+                </div>
+                <LinkButton size="sm" variant="outline" to={`/arena/${dueStudyDay.gameId}/${dueStudyDay.difficulty}`}>
+                  Start today's session
+                </LinkButton>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 text-sm text-zinc-200">
+                  <CalendarRange className="size-4 text-accent-violetSoft" />
+                  <span>Your study plan is complete. Nice work.</span>
+                </div>
+                <LinkButton size="sm" variant="outline" to="/study-plan">
+                  View plan
+                </LinkButton>
+              </>
+            )
+          ) : (
+            <>
+              <div className="flex items-center gap-2 text-sm text-zinc-200">
+                <CalendarRange className="size-4 text-accent-violetSoft" />
+                <span>Build a personalized study plan around your goals and available time.</span>
+              </div>
+              <LinkButton size="sm" variant="outline" to="/study-plan">
+                Create a study plan
+              </LinkButton>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Strongest and weakest topics */}
+      {(strongest.length > 0 || weakest.length > 0) && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {strongest.length > 0 && (
+            <div>
+              <SectionHeader title="Strongest topics" />
+              <div className="flex flex-wrap gap-2">
+                {strongest.map((t) => (
+                  <Badge key={t.topic} tone="success">
+                    {t.topic} &middot; {t.accuracy}%
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {weakest.length > 0 && (
+            <div>
+              <SectionHeader title="Needs revision" />
+              <div className="flex flex-wrap gap-2">
+                {weakest.map((t) => (
+                  <Badge key={t.topic} tone="warning">
+                    {t.topic} &middot; {t.accuracy}%
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

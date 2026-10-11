@@ -158,4 +158,26 @@ export interface UserProgressState {
   topicStats: Record<string, { correct: number; attempts: number }>
   reviewQueue: string[] // question ids answered incorrectly, for a review quest
   theme: "dark" | "light"
+  studyPlan: StudyPlan | null
+}
+
+export interface StudyPlanDay {
+  dayIndex: number
+  dateKey: string
+  gameId: string
+  gameName: string
+  difficulty: Difficulty
+  topic: string | null
+  estimatedMinutes: number
+  status: "pending" | "completed" | "skipped"
+  isRevision: boolean
+}
+
+export interface StudyPlan {
+  id: string
+  createdAt: number
+  horizonDays: number
+  dailyMinutes: number
+  domains: string[]
+  days: StudyPlanDay[]
 }

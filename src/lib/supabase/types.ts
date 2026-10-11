@@ -12,6 +12,7 @@ export interface UserProgressRow {
   topic_stats: Record<string, { correct: number; attempts: number }>
   review_queue: string[]
   theme: "dark" | "light"
+  study_plan: unknown | null
   client_updated_at: number
   updated_at: string
 }

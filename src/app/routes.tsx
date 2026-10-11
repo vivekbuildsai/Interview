@@ -10,6 +10,7 @@ const DifficultySelectPage = lazy(() => import("@/features/difficulty/Difficulty
 const ChallengePage = lazy(() => import("@/features/challenge/ChallengePage"))
 const ResultsPage = lazy(() => import("@/features/results/ResultsPage"))
 const ProgressPage = lazy(() => import("@/features/progress/ProgressPage"))
+const StudyPlanPage = lazy(() => import("@/features/studyPlan/StudyPlanPage"))
 const SettingsPage = lazy(() => import("@/features/settings/SettingsPage"))
 const NotFoundPage = lazy(() => import("@/features/misc/NotFoundPage"))
 const AuthCallbackPage = lazy(() => import("@/features/auth/AuthCallbackPage"))
@@ -34,6 +35,7 @@ const router = createBrowserRouter([
       { path: "/library", element: withSuspense(<LibraryPage />) },
       { path: "/play/:gameId", element: withSuspense(<DifficultySelectPage />) },
       { path: "/progress", element: withSuspense(<ProgressPage />) },
+      { path: "/study-plan", element: withSuspense(<StudyPlanPage />) },
       { path: "/settings", element: withSuspense(<SettingsPage />) },
     ],
   },

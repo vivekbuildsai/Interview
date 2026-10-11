@@ -14,7 +14,7 @@
 // it's pure data in, data out, so it can be (and is, see merge.test.ts)
 // unit tested exhaustively without mocking anything.
 
-import type { AttemptRecord, SessionResult, UserProgressState } from "@/lib/types"
+import type { AttemptRecord, SessionResult, StudyPlan, UserProgressState } from "@/lib/types"
 
 export interface CloudProgressSnapshot {
   xp: number
@@ -25,6 +25,7 @@ export interface CloudProgressSnapshot {
   topicStats: Record<string, { correct: number; attempts: number }>
   reviewQueue: string[]
   theme: "dark" | "light"
+  studyPlan: StudyPlan | null
   sessions: SessionResult[]
 }
 
@@ -129,6 +130,12 @@ export function mergeProgress(local: UserProgressState, cloud: CloudProgressSnap
   // and cloud already represents a real, established account.
   const theme = local.sessions.length === 0 && cloud.sessions.length > 0 ? cloud.theme : local.theme
 
+  // Same reasoning as theme: a study plan is a personal choice, not an
+  // earned/cumulative value, so it's last-write-wins rather than merged
+  // field-by-field -- local wins unless local is a blank-slate guest
+  // (no plan of its own) and the account already has one.
+  const studyPlan = local.studyPlan ?? cloud.studyPlan
+
   return {
     xp,
     sessions: mergedSessions,
@@ -139,5 +146,6 @@ export function mergeProgress(local: UserProgressState, cloud: CloudProgressSnap
     topicStats,
     reviewQueue,
     theme,
+    studyPlan,
   }
 }

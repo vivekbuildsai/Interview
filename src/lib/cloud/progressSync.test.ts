@@ -27,7 +27,7 @@ describe("fetchCloudProgress", () => {
 
     const result = await fetchCloudProgress("user-1")
 
-    expect(result).toEqual({ ok: true, data: { xp: 0, unlockedAchievements: [], lastActiveDateKey: null, streakDays: 0, bestStreak: 0, topicStats: {}, reviewQueue: [], theme: "dark", sessions: [] } })
+    expect(result).toEqual({ ok: true, data: { xp: 0, unlockedAchievements: [], lastActiveDateKey: null, streakDays: 0, bestStreak: 0, topicStats: {}, reviewQueue: [], theme: "dark", studyPlan: null, sessions: [] } })
   })
 
   it("reports a network/query failure as a Result instead of throwing", async () => {
@@ -60,7 +60,7 @@ describe("fetchCloudProgress", () => {
 })
 
 describe("pushCloudProgress", () => {
-  const baseProgress = { xp: 10, sessions: [], unlockedAchievements: [], lastActiveDateKey: null, streakDays: 0, bestStreak: 0, topicStats: {}, reviewQueue: [], theme: "dark" as const }
+  const baseProgress = { xp: 10, sessions: [], unlockedAchievements: [], lastActiveDateKey: null, streakDays: 0, bestStreak: 0, topicStats: {}, reviewQueue: [], theme: "dark" as const, studyPlan: null }
 
   it("calls the stale-write-guarding RPC with the right payload and reports success", async () => {
     rpcMock.mockResolvedValue({ data: { client_updated_at: 500 }, error: null })

@@ -8,7 +8,7 @@
 import { supabase } from "@/lib/supabase/client"
 import type { SessionHistoryRow, UserProgressRow } from "@/lib/supabase/types"
 import type { CloudProgressSnapshot } from "./merge"
-import type { SessionResult, UserProgressState } from "@/lib/types"
+import type { SessionResult, StudyPlan, UserProgressState } from "@/lib/types"
 
 export type SyncResult<T> = { ok: true; data: T } | { ok: false; error: string }
 
@@ -62,6 +62,7 @@ export async function fetchCloudProgress(userId: string): Promise<SyncResult<Clo
       topicStats: row?.topic_stats ?? {},
       reviewQueue: row?.review_queue ?? [],
       theme: row?.theme ?? "dark",
+      studyPlan: (row?.study_plan as StudyPlan | null | undefined) ?? null,
       sessions,
     },
   }
@@ -91,6 +92,7 @@ export async function pushCloudProgress(userId: string, progress: UserProgressSt
     p_review_queue: progress.reviewQueue,
     p_theme: progress.theme,
     p_client_updated_at: clientUpdatedAt,
+    p_study_plan: progress.studyPlan,
   })
 
   if (error) return { ok: false, error: error.message }

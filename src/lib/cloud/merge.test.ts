@@ -37,6 +37,7 @@ function emptyProgress(overrides: Partial<UserProgressState> = {}): UserProgress
     topicStats: {},
     reviewQueue: [],
     theme: "dark",
+    studyPlan: null,
     ...overrides,
   }
 }
