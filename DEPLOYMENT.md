@@ -43,6 +43,14 @@ already have an account with.
 4. Deploy. Vercel gives you a `*.vercel.app` URL immediately; add a
    custom domain under Project Settings -> Domains whenever you're
    ready.
+5. Optional, for accounts/cloud sync: under Project Settings ->
+   Environment Variables, add `VITE_SUPABASE_URL` and
+   `VITE_SUPABASE_ANON_KEY` (see [SUPABASE_SETUP.md](./SUPABASE_SETUP.md))
+   for Production, Preview, and Development, then redeploy -- Vercel
+   doesn't retroactively inject env vars into a deployment that already
+   ran. Also add this exact URL to Supabase's allowed redirect URLs
+   (Authentication -> URL Configuration) as `<your-url>/auth/callback`,
+   or Google/email sign-in will redirect back to an unrecognized URL.
 
 Or from the CLI, from this directory:
 
@@ -119,6 +127,18 @@ Then, with `npm run preview` running, manually check in a browser:
   exact build.
 - Open Settings -> Reset all progress, confirm the confirmation dialog
   and reset both work.
+
+If `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are set (see
+[SUPABASE_SETUP.md](./SUPABASE_SETUP.md)), also check:
+
+- A "Sign in" control appears in the header and Settings shows an
+  Account card -- if these env vars are unset, both are correctly
+  absent instead of showing a broken or erroring auth UI.
+- The welcome screen's "Continue as Guest", "Continue with Google", and
+  "Sign up or sign in with email" all open/dismiss without errors.
+- Google OAuth and email delivery only actually work once you've
+  completed every step in SUPABASE_SETUP.md with real provider
+  credentials -- don't expect them to work from code alone.
 
 (All of the above were already verified as part of the production-
 readiness audit this guide accompanies -- this checklist is for
