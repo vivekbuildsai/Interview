@@ -11,11 +11,14 @@ beforeEach(() => {
 })
 
 describe("LibraryPage", () => {
-  it("lists playable and coming-soon games", () => {
+  it("lists every playable game across every category, with no placeholder 'coming soon' modules left", () => {
     renderWithRouter(<LibraryPage />)
     expect(screen.getByText("Python")).toBeInTheDocument()
     expect(screen.getByText("Kubernetes")).toBeInTheDocument()
-    expect(screen.getAllByText(/coming soon/i).length).toBeGreaterThan(0)
+    expect(screen.getByText("Java")).toBeInTheDocument()
+    expect(screen.getByText("Docker & Containers")).toBeInTheDocument()
+    expect(screen.getByText("System Design")).toBeInTheDocument()
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument()
   })
 
   it("filters games by search query", async () => {

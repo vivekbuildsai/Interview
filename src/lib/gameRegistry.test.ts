@@ -40,12 +40,19 @@ describe("gameRegistry", () => {
     }
   })
 
-  it("coming-soon games declare no questions and are excluded from getPlayableGames", () => {
-    const comingSoon = GAMES.filter((g) => g.comingSoon)
-    expect(comingSoon.length).toBeGreaterThan(0)
-    for (const g of comingSoon) {
-      expect(g.questions).toHaveLength(0)
+  it("every registered game is genuinely playable -- no module is left as a placeholder", () => {
+    // Every domain that used to be a "coming soon" placeholder now has
+    // real content; a comingSoon game with zero questions would be a
+    // regression back to a placeholder, so this is asserted directly
+    // rather than just "some games are playable".
+    for (const game of GAMES) {
+      expect(game.comingSoon).toBeFalsy()
+      expect(game.questions.length).toBeGreaterThan(0)
     }
-    expect(getPlayableGames().some((g) => g.comingSoon)).toBe(false)
+    expect(getPlayableGames()).toHaveLength(GAMES.length)
+  })
+
+  it("covers at least 20 distinct domains with real content, not a handful of samples", () => {
+    expect(GAMES.length).toBeGreaterThanOrEqual(20)
   })
 })
