@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react"
 import { NavLink, Outlet } from "react-router-dom"
 import { Flame, Moon, Sun, Zap } from "lucide-react"
 import { Icon } from "@/components/ui/Icon"
@@ -5,6 +6,10 @@ import { cn } from "@/lib/cn"
 import { NAV_ITEMS } from "./nav"
 import { useArenaStore } from "@/lib/store"
 import { overallStats } from "@/lib/derived"
+
+// Lazy for the same reason as AuthRoot (see src/App.tsx): keeps
+// @supabase/supabase-js out of the main bundle for guests.
+const AccountMenu = lazy(() => import("@/features/auth/AccountMenu").then((m) => ({ default: m.AccountMenu })))
 
 function Logo() {
   return (
@@ -92,6 +97,9 @@ export function AppShell() {
           <div className="flex items-center gap-2 sm:gap-3">
             <StreakAndXp />
             <ThemeToggle />
+            <Suspense fallback={null}>
+              <AccountMenu />
+            </Suspense>
           </div>
         </header>
 

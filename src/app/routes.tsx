@@ -12,6 +12,7 @@ const ResultsPage = lazy(() => import("@/features/results/ResultsPage"))
 const ProgressPage = lazy(() => import("@/features/progress/ProgressPage"))
 const SettingsPage = lazy(() => import("@/features/settings/SettingsPage"))
 const NotFoundPage = lazy(() => import("@/features/misc/NotFoundPage"))
+const AuthCallbackPage = lazy(() => import("@/features/auth/AuthCallbackPage"))
 
 function withSuspense(node: React.ReactNode) {
   return <Suspense fallback={<PageLoader />}>{node}</Suspense>
@@ -36,6 +37,7 @@ const router = createBrowserRouter([
       { path: "/settings", element: withSuspense(<SettingsPage />) },
     ],
   },
+  { path: "/auth/callback", element: withSuspense(<AuthCallbackPage />), errorElement: <RouteErrorFallback /> },
   { path: "/arena/:gameId/:difficulty", element: withSuspense(<ChallengePage />), errorElement: <RouteErrorFallback /> },
   { path: "/arena/:gameId/:difficulty/results", element: withSuspense(<ResultsPage />), errorElement: <RouteErrorFallback /> },
   { path: "*", element: withSuspense(<NotFoundPage />), errorElement: <RouteErrorFallback /> },
